@@ -1,12 +1,12 @@
-const express= require('express');
-const { createPost } = require('../controllers/postController');
-const { authenticateRequest } = require('../middleware/authMiddleware');
+const express = require("express");
+const { createPost } = require("../controllers/postController");
+const { authenticateRequest } = require("../middleware/authMiddleware");
 
-const router= express.Router();
+const router = express.Router();
 
-app.use(authenticateRequest);
+router.use(authenticateRequest);
 
 // As it is secure ==> So use middleware for it
-router.post('/create-post', createPost);
+router.post("/create-post", createPost);
 
-module.exports= router;
+module.exports = router;

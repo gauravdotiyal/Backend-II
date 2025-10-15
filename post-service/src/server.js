@@ -1,37 +1,41 @@
-const express = require("express");
-const connectDB = require("../config/db");
 require("dotenv").config();
-const cors = require("cors");
+const express = require("express");
 const helmet = require("helmet");
+const cors = require("cors");
+const logger = require("./utils/logger");
+const postRoutes = require("./routes/post-routes");
+// const errorHandler=require('./middleware/error')
+const { rateLimit } = require("express-rate-limit");
 const { RateLimiterRedis } = require("rate-limiter-flexible");
 const Redis = require("ioredis");
-const { rateLimit } = require("express-rate-limit");
-const { RedisStore } = require("rate-limit-redis");
-const routes = require("./routes/identityService.routes");
-const errorHandler = require("./middleware/errorHandler");
-const logger = require("./utils/logger");
+const connectDB = require("../../identity-service/config/db");
+const errorHandler = require("../../identity-service/src/middleware/errorHandler");
 
 const app = express();
+const PORT = process.env.PORT || 3002;
 
-// mongodb connection
-connectDB(); 
+// mongo connection
+connectDB();
 
 const redisClient = new Redis(process.env.REDIS_URL);
-app.use(helmet());
 app.use(cors());
+app.use(helmet());
 app.use(express.json());
-app.use((req, res, next) => {
-  logger.info(`Received ${req.method} requested to ${req.url}`);
-  logger.info(`Request body ${req.body} `);
-  next();
+app.use((req, res, next) =>{
+    logger.info(`Received ${req.method} requested to ${req.url}`);
+    logger.info(`Received body ${req.body}`);
+    next()
 });
-// DDOS Protection and rate limiting
+ 
+/*
+// Rate limiting for per request timing
 const rateLimiter = new RateLimiterRedis({
   storeClient: redisClient,
   keyPrefix: "middleware",
-  points: 10, // how many request
+  points: 20,
   duration: 1,
 });
+
 app.use((req, res, next) => {
   rateLimiter
     .consume(req.ip)
@@ -45,10 +49,11 @@ app.use((req, res, next) => {
     });
 });
 
+
 // ip based rate limiting for the sensitive endpoints
 const sensitiveEndpointsLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 50,
+  max: 70,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
@@ -60,19 +65,27 @@ const sensitiveEndpointsLimiter = rateLimit({
   }),
 });
 
-// apply this sensitive endpoint limiter to our points
-app.use("/api/auth/register", sensitiveEndpointsLimiter);
+app.use('/api/posts/create-post', sensitiveEndpointsLimiter);
 
-// Routes
-app.use("/api/auth/", routes);
-// error handlere
+*/
+// app.use('/api/posts', postRoutes);
+// ---->>
 
+// we have to pass our rediclient to our routes
+app.use(
+  "/api/posts",
+  (req, res, next) => {
+    req.redisClient = redisClient;
+    next();
+  },
+  postRoutes
+);
+
+// error handler
 app.use(errorHandler);
 
-const port = process.env.PORT || 3001;
-
-app.listen(port, () => {
-  logger.info(`Identity service is running on port ${port}`);
+app.listen(PORT, () => {
+  logger.info(`Post service is running on port ${PORT}`);
 });
 
 //unhandled promise rejection handler

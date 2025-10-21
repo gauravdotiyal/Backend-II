@@ -8,15 +8,15 @@ const postRoutes = require("./routes/post-routes");
 const { rateLimit } = require("express-rate-limit");
 const { RateLimiterRedis } = require("rate-limiter-flexible");
 const Redis = require("ioredis");
-const connectDB = require("../../identity-service/config/db");
-const errorHandler = require("../../identity-service/src/middleware/errorHandler");
+const connectDB = require("./config/db");
+const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
 const PORT = process.env.PORT || 3002;
-
+ 
 // mongo connection
 connectDB();
-
+ 
 const redisClient = new Redis(process.env.REDIS_URL);
 app.use(cors());
 app.use(helmet());
@@ -92,3 +92,4 @@ app.listen(PORT, () => {
 process.on("unhandledRejection", (reason, promise) => {
   logger.error("Unhandeled rejection at ", promise, "reason ", reason);
 });
+ 

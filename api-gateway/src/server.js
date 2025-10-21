@@ -8,6 +8,7 @@ const { RedisStore } = require("rate-limit-redis");
 const proxy = require("express-http-proxy");
 const errorHandler = require("./middleware/errorHandler");
 const logger = require("./utils/logger");
+const { validateToken } = require("./middleware/authMiddleware");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,13 +47,12 @@ app.use((req, res, next) => {
 
 const proxyOptions = {
   proxyReqPathResolver: (req) => {
-    console.log("hell")
     return req.originalUrl.replace(/^\/v1/, "/api");
-  }, 
+  },
   proxyErrorHandler: (err, res, next) => {
-    logger.error(`Proxy Error ${err.message}`);  
+    logger.error(`Proxy Error ${err.message}`);
     res.status(500).json({
-      message: "Internal Server Error Coming", 
+      message: "Internal Server Error Coming",
       error: err.message,
     });
   },
@@ -62,15 +62,35 @@ const proxyOptions = {
 app.use(
   "/v1/auth",
   proxy(process.env.IDENTITY_SERVICE_URL, {
-    ...proxyOptions, 
+    ...proxyOptions,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-      proxyReqOpts.headers["Content-Type"] = "application/json"; 
+      proxyReqOpts.headers["Content-Type"] = "application/json";
       return proxyReqOpts;
-    }, 
+    },
     userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
       logger.info(
         `Response received from Identity service : ${proxyRes.statusCode}`
-      ); 
+      );
+      return proxyResData;
+    },
+  }) 
+);
+
+// setting up proxy for post service == with auth middleware
+app.use(
+  "/v1/posts",
+  validateToken,
+  proxy(process.env.POST_SERVICE_URL, {
+    ...proxyOptions,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      proxyReqOpts.headers["Content-Type"] = "application/json";
+      proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
+      return proxyReqOpts; 
+    },
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      logger.info(
+        `Response received with Post Service : ${proxyRes.statusCode}`
+      );
       return proxyResData;
     },
   })
@@ -78,9 +98,11 @@ app.use(
 
 app.use(errorHandler);
 
-app.listen(PORT, ()=>{
-    logger.info(`API gateway is running on PORT ${PORT}`);
-    logger.info(`Identity Service is running on URL ${process.env.IDENTITY_SERVICE_URL}`);
-    logger.info(`Redis URL ${process.env.REDIS_URL}`);
-
-})
+app.listen(PORT, () => {
+  logger.info(`API gateway is running on PORT ${PORT}`);
+  logger.info(
+    `Identity Service is running on URL ${process.env.IDENTITY_SERVICE_URL}`
+  );
+  logger.info(`Post Service is running on URL ${process.env.POST_SERVICE_URL}`);
+  logger.info(`Redis URL ${process.env.REDIS_URL}`);
+});

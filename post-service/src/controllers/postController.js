@@ -1,4 +1,5 @@
 const Post = require("../models/Post");
+const invalidatePostsCache = require("../utils/invalidateCache");
 const logger = require("../utils/logger");
 const { validateCreatePost } = require("../utils/validation");
 
@@ -25,6 +26,8 @@ const createPost = async (req, res) => {
 
     console.log("trying");
     await newlyCreatedPost.save();
+
+    await invalidatePostsCache(req, newlyCreatedPost._id.toString());
 
     logger.info("Post created successfully");
     res.status(201).json({
@@ -83,19 +86,59 @@ const getAllPosts = async (req, res) => {
 
 const getOnePost = async (req, res) => {
   try {
+    const postId = req.params.id;
+    const cacheKey = `posts:${postId}`;
+
+    const cachedPost = await req.redisClient.get(cacheKey);
+    if (cachedPost) {
+      return res.json(JSON.parse(cachedPost));
+    }
+
+    const singlePostById = await Post.findById(postId);
+    if (!singlePostById) {
+      return res.status(400).json({
+        message: "Post with requested Id is not found",
+        success: false,
+      });
+    }
+
+    await req.redisClient.setex(
+      cachedPost,
+      2600,
+      JSON.stringify(singlePostById)
+    );
+     res.json(singlePostById);
   } catch (error) {
-    logger.error("Error while creating post", error);
+    logger.error("Error while fetching one post", error);
     res.status(400).json({
+      message: "Error while fetching one of the post",
       success: false,
-      message: "Error while creating the post",
     });
   }
 };
 
 const deletePost = async (req, res) => {
   try {
+    const post = await Post.findOneAndDelete({
+      _id:req.params.id,
+      user: req.user.userId,
+    });
+
+    if (!post) {
+      return res.status(400).json({
+        message: "Post with requested Id is not present",
+        success: false,
+      });
+    }
+
+    // Invalidate the cache for posts
+    await invalidatePostsCache(req, req.params.id);
+    res.json({
+      message: "Post deleted Successfully",
+      success: true,
+    });
   } catch (error) {
-    logger.error("Error while creating post", error);
+    logger.error("Error while deleting post", error);
     res.status(400).json({
       success: false,
       message: "Error while creating the post",
@@ -103,4 +146,4 @@ const deletePost = async (req, res) => {
   }
 };
 
-module.exports = { createPost, getAllPosts };
+module.exports = { createPost, getAllPosts, getOnePost,deletePost };

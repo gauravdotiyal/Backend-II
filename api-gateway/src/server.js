@@ -73,7 +73,7 @@ app.use(
       );
       return proxyResData;
     },
-  }) 
+  })
 );
 
 // setting up proxy for post service == with auth middleware
@@ -85,7 +85,7 @@ app.use(
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
       proxyReqOpts.headers["Content-Type"] = "application/json";
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
-      return proxyReqOpts; 
+      return proxyReqOpts;
     },
     userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
       logger.info(
@@ -96,13 +96,39 @@ app.use(
   })
 );
 
+//setting up proxy for media service
+app.use(
+  "/v1/media",
+  validateToken,
+  proxy(process.env.MEDIA_SERVICE_URL, {
+    ...proxyOptions,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
+      if (!srcReq.headers["content-type"].startsWith("multipart/form-data")) {
+        proxyReqOpts.headers["Content-Type"] = "application/json";
+      } 
+      return proxyReqOpts; 
+    },
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      logger.info(
+        `Response received with Media Service : ${proxyRes.statusCode}`
+      );
+      return proxyResData;
+    },
+    parseReqBody: false,
+  })
+);
+
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  logger.info(`API gateway is running on PORT ${PORT}`);
+  logger.info(`API gateway is running on URL http://localhost:${PORT}`);
   logger.info(
     `Identity Service is running on URL ${process.env.IDENTITY_SERVICE_URL}`
   );
   logger.info(`Post Service is running on URL ${process.env.POST_SERVICE_URL}`);
+  logger.info(
+    `Media Service is running on URL ${process.env.MEDIA_SERVICE_URL}`
+  );
   logger.info(`Redis URL ${process.env.REDIS_URL}`);
 });

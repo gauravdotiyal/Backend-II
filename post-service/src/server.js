@@ -10,23 +10,24 @@ const { RateLimiterRedis } = require("rate-limiter-flexible");
 const Redis = require("ioredis");
 const connectDB = require("./config/db");
 const errorHandler = require("./middleware/errorHandler");
+const {connectRabbitMQ} = require("./utils/rabbitmq");
 
 const app = express();
 const PORT = process.env.PORT || 3002;
- 
+
 // mongo connection
 connectDB();
- 
+
 const redisClient = new Redis(process.env.REDIS_URL);
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
-app.use((req, res, next) =>{
-    logger.info(`Received ${req.method} requested to ${req.url}`);
-    logger.info(`Received body ${req.body}`);
-    next()
+app.use((req, res, next) => {
+  logger.info(`Received ${req.method} requested to ${req.url}`);
+  logger.info(`Received body ${req.body}`);
+  next();
 });
- 
+
 /*
 // Rate limiting for per request timing
 const rateLimiter = new RateLimiterRedis({
@@ -84,12 +85,21 @@ app.use(
 // error handler
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  logger.info(`Post service is running on port ${PORT}`);
-});
+async function StartServer() {
+  try {
+    await connectRabbitMQ();
+    app.listen(PORT, () => {
+      logger.info(`Post service is running on port ${PORT}`);
+    });
+  } catch (error) {
+    logger.error('Failed to connect to server ', error);
+    process.exit(1);
+  }
+}
+
+StartServer();
 
 //unhandled promise rejection handler
 process.on("unhandledRejection", (reason, promise) => {
   logger.error("Unhandeled rejection at ", promise, "reason ", reason);
 });
- 

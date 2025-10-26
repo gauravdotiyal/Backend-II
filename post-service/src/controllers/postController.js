@@ -1,6 +1,7 @@
 const Post = require("../models/Post");
 const invalidatePostsCache = require("../utils/invalidateCache");
 const logger = require("../utils/logger");
+const { publishEvent } = require("../utils/rabbitmq");
 const { validateCreatePost } = require("../utils/validation");
 
 const createPost = async (req, res) => {
@@ -107,7 +108,7 @@ const getOnePost = async (req, res) => {
       2600,
       JSON.stringify(singlePostById)
     );
-     res.json(singlePostById);
+    res.json(singlePostById);
   } catch (error) {
     logger.error("Error while fetching one post", error);
     res.status(400).json({
@@ -120,7 +121,7 @@ const getOnePost = async (req, res) => {
 const deletePost = async (req, res) => {
   try {
     const post = await Post.findOneAndDelete({
-      _id:req.params.id,
+      _id: req.params.id,
       user: req.user.userId,
     });
 
@@ -130,6 +131,13 @@ const deletePost = async (req, res) => {
         success: false,
       });
     }
+
+    //publish post delete method
+    await publishEvent("post.deleted", {
+      postId: post._id.toString(),  
+      userId: req.user.userId,
+      mediaIds: post.mediaIds,
+    });
 
     // Invalidate the cache for posts
     await invalidatePostsCache(req, req.params.id);
@@ -146,4 +154,4 @@ const deletePost = async (req, res) => {
   }
 };
 
-module.exports = { createPost, getAllPosts, getOnePost,deletePost };
+module.exports = { createPost, getAllPosts, getOnePost, deletePost };

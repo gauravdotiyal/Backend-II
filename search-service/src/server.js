@@ -8,7 +8,7 @@ const Redis = require("ioredis");
 const mongoose = require('mongoose');
 const {connectRabbitMQ, consumeEvent}= require('./utils/rabbitmq');
 const searchRoutes= require('./routes/search-routes');
-const { handleCreateEvent } = require("./eventHandlers/search-event-handler");
+const { handleCreateEvent, handleDeleteEvent } = require("./eventHandlers/search-event-handler");
 
 
 const app= express();
@@ -45,6 +45,7 @@ async function startServer(){
   try {
     await connectRabbitMQ();
     await consumeEvent('post.created', handleCreateEvent);
+    await consumeEvent('post.deleted', handleDeleteEvent);
 
   } catch (error) {
     logger.info(error, `Failed to Start the Search Service`);

@@ -7,6 +7,8 @@ const errorHandler = require("./middleware/errorHandler");
 const Redis = require("ioredis");
 const mongoose = require('mongoose');
 const {connectRabbitMQ, consumeEvent}= require('./utils/rabbitmq');
+const searchRoutes= require('./routes/search-routes');
+const { handleCreateEvent } = require("./eventHandlers/search-event-handler");
 
 
 const app= express();
@@ -33,5 +35,23 @@ app.use((req, res, next) => {
 
 // Homework Implement ip based rate limiting routing here for sensitive endpoints
 
+
+app.use('/api/search',searchRoutes);
+
+app.use(errorHandler);
+
+
+async function startServer(){
+  try {
+    await connectRabbitMQ();
+    await consumeEvent('post.created', handleCreateEvent);
+
+  } catch (error) {
+    logger.info(error, `Failed to Start the Search Service`);
+  }
+}
+
+
+startServer();
 
 

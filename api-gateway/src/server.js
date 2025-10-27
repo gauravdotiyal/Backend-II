@@ -106,12 +106,34 @@ app.use(
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
       if (!srcReq.headers["content-type"].startsWith("multipart/form-data")) {
         proxyReqOpts.headers["Content-Type"] = "application/json";
-      } 
-      return proxyReqOpts; 
+      }
+      return proxyReqOpts;
     },
     userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
       logger.info(
         `Response received with Media Service : ${proxyRes.statusCode}`
+      );
+      return proxyResData;
+    },
+    parseReqBody: false,
+  })
+);
+
+app.use(
+  "/v1/posts",
+  validateToken,
+  proxy(process.env.SEARCH_SERVICE_URL, {
+    ...proxyOptions,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
+      if (!srcReq.headers["content-type"].startsWith("multipart/form-data")) {
+        proxyReqOpts.headers["Content-Type"] = "application/json";
+      }
+      return proxyReqOpts;
+    },
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      logger.info(
+        `Response received with Post Service : ${proxyRes.statusCode}`
       );
       return proxyResData;
     },
@@ -129,6 +151,9 @@ app.listen(PORT, () => {
   logger.info(`Post Service is running on URL ${process.env.POST_SERVICE_URL}`);
   logger.info(
     `Media Service is running on URL ${process.env.MEDIA_SERVICE_URL}`
+  );
+  logger.info(
+    `Search Service is running on URL ${process.env.SEARCH_SERVICE_URL}`
   );
   logger.info(`Redis URL ${process.env.REDIS_URL}`);
 });

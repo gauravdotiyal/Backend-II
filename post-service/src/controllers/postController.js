@@ -27,6 +27,14 @@ const createPost = async (req, res) => {
 
     console.log("trying");
     await newlyCreatedPost.save();
+    
+    // publish this event here and consume this event in search service
+    await publishEvent('post.created', {
+      postId: newlyCreatedPost._id.toString(),
+      userId:newlyCreatedPost.user.toString(),
+      content:newlyCreatedPost.content,
+      createdAt:newlyCreatedPost.createdAt,
+    })
 
     await invalidatePostsCache(req, newlyCreatedPost._id.toString());
 
@@ -108,7 +116,7 @@ const getOnePost = async (req, res) => {
       2600,
       JSON.stringify(singlePostById)
     );
-    res.json(singlePostById);
+    res.json(singlePostById); 
   } catch (error) {
     logger.error("Error while fetching one post", error);
     res.status(400).json({

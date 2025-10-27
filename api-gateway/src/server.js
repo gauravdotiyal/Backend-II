@@ -120,7 +120,7 @@ app.use(
 );
 
 app.use(
-  "/v1/posts",
+  "/v1/search",
   validateToken,
   proxy(process.env.SEARCH_SERVICE_URL, {
     ...proxyOptions,

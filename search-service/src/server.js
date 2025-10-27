@@ -5,15 +5,17 @@ const cors = require("cors");
 const logger = require("./utils/logger");
 const errorHandler = require("./middleware/errorHandler");
 const Redis = require("ioredis");
-const mongoose = require('mongoose');
-const {connectRabbitMQ, consumeEvent}= require('./utils/rabbitmq');
-const searchRoutes= require('./routes/search-routes');
-const { handleCreateEvent, handleDeleteEvent } = require("./eventHandlers/search-event-handler");
+const mongoose = require("mongoose");
+const { connectRabbitMQ, consumeEvent } = require("./utils/rabbitmq");
+const searchRoutes = require("./routes/search-routes");
+const {
+  handleCreateEvent,
+  handleDeleteEvent,
+} = require("./eventHandlers/search-event-handler");
 
+const app = express();
 
-const app= express();
-
-const PORT= process.env.PORT || 3004;
+const PORT = process.env.PORT || 3004;
 
 // mongo connection
 mongoose
@@ -31,28 +33,28 @@ app.use((req, res, next) => {
   next();
 });
 
-
-
 // Homework Implement ip based rate limiting routing here for sensitive endpoints
 
 
-app.use('/api/search',searchRoutes);
+//Homework to add the redis cache for Search  
+// pass redisclient as part of your request and then implemnt redis caching 
+
+app.use("/api/search", searchRoutes);
 
 app.use(errorHandler);
 
-
-async function startServer(){
+async function startServer() {
   try {
     await connectRabbitMQ();
-    await consumeEvent('post.created', handleCreateEvent);
-    await consumeEvent('post.deleted', handleDeleteEvent);
+    await consumeEvent("post.created", handleCreateEvent);
+    await consumeEvent("post.deleted", handleDeleteEvent);
 
+    app.listen(PORT, () => {
+      logger.info(`Search Service app is running on port ${PORT} successfully`);
+    });
   } catch (error) {
     logger.info(error, `Failed to Start the Search Service`);
   }
 }
 
-
 startServer();
-
-

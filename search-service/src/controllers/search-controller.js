@@ -1,6 +1,8 @@
 const Search = require("../models/Search");
 const logger = require("../utils/logger");
 
+//implement caching here for 2 to 5 mins  
+// everytime when we add a new post invalidate the cache as per new post created 
 const searchPostController = async (req, res) => {
   logger.info(`Search Endpont Hit`);
 

@@ -16,4 +16,4 @@ COPY . .
 EXPOSE 3001
 
 # 6️⃣ Start the app
-CMD ["node" "src/server.js"]
+CMD ["node","src/server.js"]
